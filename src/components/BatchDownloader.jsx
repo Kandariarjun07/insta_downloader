@@ -95,17 +95,17 @@ const BatchDownloader = ({ urls, setUrls, onDownload, isLoading }) => {
         <button
           onClick={onDownload}
           disabled={validUrls.length === 0 || isLoading}
-          className={`flex-1 btn-primary flex items-center justify-center space-x-2 ${
+          className={`flex-1 btn-primary flex items-center justify-center space-x-3 group/btn ${
             validUrls.length === 0 || isLoading
               ? "opacity-50 cursor-not-allowed"
               : ""
           }`}
         >
-          <Download className="w-5 h-5" />
-          <span>
+          <Download className="w-6 h-6 group-hover/btn:animate-bounce" />
+          <span className="font-bold">
             {isLoading
-              ? "Processing..."
-              : `Download ${validUrls.length} item${
+              ? "⚡ Processing..."
+              : `🚀 Download ${validUrls.length} item${
                   validUrls.length !== 1 ? "s" : ""
                 }`}
           </span>

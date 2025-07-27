@@ -85,12 +85,14 @@ const UrlInput = ({ url, setUrl, onDownload, isLoading, validateUrl }) => {
       <button
         type="submit"
         disabled={!isValid || isLoading}
-        className={`w-full btn-primary flex items-center justify-center space-x-2 ${
+        className={`w-full btn-primary flex items-center justify-center space-x-3 group/btn ${
           !isValid || isLoading ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
-        <Download className="w-5 h-5" />
-        <span>{isLoading ? "Processing..." : "Download"}</span>
+        <Download className="w-6 h-6 group-hover/btn:animate-bounce" />
+        <span className="text-lg font-bold">
+          {isLoading ? "⚡ Processing..." : "🚀 Download Now"}
+        </span>
       </button>
 
       {/* URL Format Help */}

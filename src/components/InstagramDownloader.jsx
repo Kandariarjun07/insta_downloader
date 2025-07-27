@@ -152,29 +152,29 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
   };
 
   return (
-    <div className="card p-6 animate-slide-up">
-      <div className="space-y-6">
+    <div className="card p-8 animate-scale-in neon-glow">
+      <div className="space-y-8">
         {/* Mode Toggle */}
-        <div className="flex items-center justify-center space-x-4">
+        <div className="flex items-center justify-center space-x-2 p-2 bg-gradient-to-r from-gray-100/50 to-gray-200/50 dark:from-dark-surface/50 dark:to-dark-border/50 rounded-2xl backdrop-blur-sm">
           <button
             onClick={() => setIsBatchMode(false)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+            className={`px-6 py-3 rounded-xl font-bold transition-all duration-500 transform ${
               !isBatchMode
-                ? "bg-blue-500 text-white shadow-lg"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                ? "bg-gradient-to-r from-primary-500 to-instagram-pink text-white shadow-xl scale-105 neon-glow"
+                : "text-gray-600 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-dark-card/50 hover:scale-105"
             }`}
           >
-            Single Download
+            <span className="flex items-center gap-2">📱 Single Download</span>
           </button>
           <button
             onClick={() => setIsBatchMode(true)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+            className={`px-6 py-3 rounded-xl font-bold transition-all duration-500 transform ${
               isBatchMode
-                ? "bg-blue-500 text-white shadow-lg"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                ? "bg-gradient-to-r from-secondary-500 to-instagram-blue text-white shadow-xl scale-105 neon-glow"
+                : "text-gray-600 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-dark-card/50 hover:scale-105"
             }`}
           >
-            Batch Download
+            <span className="flex items-center gap-2">⚡ Batch Download</span>
           </button>
         </div>
 
@@ -198,19 +198,45 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
 
         {/* Error Message */}
         {error && (
-          <div className="flex items-center space-x-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg animate-slide-up">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-700 dark:text-red-300">{error}</p>
+          <div className="flex items-center space-x-3 p-6 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-2 border-red-200 dark:border-red-700 rounded-2xl animate-bounce-in backdrop-blur-sm">
+            <div className="p-2 bg-red-500 rounded-full animate-pulse">
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+            </div>
+            <div>
+              <p className="font-semibold text-red-800 dark:text-red-200">
+                Oops! Something went wrong
+              </p>
+              <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+            </div>
           </div>
         )}
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center space-x-3 p-8">
-            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-            <p className="text-gray-600 dark:text-gray-300">
-              Processing your request...
-            </p>
+          <div className="flex flex-col items-center justify-center space-y-4 p-12 bg-gradient-to-br from-primary-50/50 to-secondary-50/50 dark:from-primary-900/20 dark:to-secondary-900/20 rounded-2xl backdrop-blur-sm border border-primary-200/50 dark:border-primary-700/50">
+            <div className="relative">
+              <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-instagram-pink rounded-full animate-pulse"></div>
+              <Loader2 className="w-8 h-8 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-spin" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold gradient-text">
+                Processing your request...
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                ✨ Working some magic ✨
+              </p>
+            </div>
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-primary-500 rounded-full animate-bounce"></div>
+              <div
+                className="w-2 h-2 bg-instagram-pink rounded-full animate-bounce"
+                style={{ animationDelay: "0.1s" }}
+              ></div>
+              <div
+                className="w-2 h-2 bg-secondary-500 rounded-full animate-bounce"
+                style={{ animationDelay: "0.2s" }}
+              ></div>
+            </div>
           </div>
         )}
 

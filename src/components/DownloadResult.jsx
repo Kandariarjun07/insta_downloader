@@ -25,16 +25,22 @@ const DownloadResult = ({ result }) => {
   };
 
   return (
-    <div className="space-y-4 animate-slide-up">
-      <div className="flex items-center space-x-2 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+    <div className="space-y-6 animate-bounce-in">
+      <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-2xl backdrop-blur-sm">
+        <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse neon-glow">
+          <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
+        </div>
         <div>
-          <p className="text-green-700 dark:text-green-300 font-medium">
-            Download Ready!
+          <p className="text-green-800 dark:text-green-200 font-bold text-lg">
+            🎉 Download Ready!
           </p>
-          <p className="text-green-600 dark:text-green-400 text-sm">
-            Found {result.items.length} item
-            {result.items.length !== 1 ? "s" : ""} to download
+          <p className="text-green-700 dark:text-green-300 text-sm">
+            Found{" "}
+            <span className="font-semibold gradient-text">
+              {result.items.length}
+            </span>{" "}
+            amazing item
+            {result.items.length !== 1 ? "s" : ""} to download ✨
           </p>
         </div>
       </div>
@@ -43,7 +49,8 @@ const DownloadResult = ({ result }) => {
         {result.items.map((item, index) => (
           <div
             key={index}
-            className="card p-4 hover:shadow-lg transition-all duration-300 group"
+            className="card-interactive p-6 hover:shadow-2xl transition-all duration-500 group transform hover:scale-105 animate-scale-in neon-glow"
+            style={{ animationDelay: `${index * 0.1}s` }}
           >
             <div className="space-y-3">
               {/* Media Type Icon */}
@@ -156,7 +163,7 @@ const DownloadResult = ({ result }) => {
               </div>
 
               {/* Download Actions */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <button
                   onClick={() =>
                     handleDownload(
@@ -167,20 +174,20 @@ const DownloadResult = ({ result }) => {
                       item.isVideo
                     )
                   }
-                  className="w-full btn-primary flex items-center justify-center space-x-2"
+                  className="w-full btn-primary flex items-center justify-center space-x-2 group/btn"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download</span>
+                  <Download className="w-5 h-5 group-hover/btn:animate-bounce" />
+                  <span className="font-bold">💾 Download</span>
                 </button>
 
                 <a
                   href={item.media}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full btn-secondary flex items-center justify-center space-x-2"
+                  className="w-full btn-secondary flex items-center justify-center space-x-2 group/btn"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Open in New Tab</span>
+                  <ExternalLink className="w-5 h-5 group-hover/btn:rotate-12 transition-transform duration-300" />
+                  <span className="font-semibold">🔗 Open in New Tab</span>
                 </a>
               </div>
 
