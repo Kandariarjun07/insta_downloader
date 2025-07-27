@@ -1,12 +1,29 @@
+import { useState } from "react";
 import {
   Download,
   ExternalLink,
   Image,
   Video,
   CheckCircle,
+  Package,
+  Archive,
 } from "lucide-react";
+import {
+  downloadAsZip,
+  shouldOfferZipDownload,
+  estimateZipSize,
+} from "../utils/zipDownload";
+import ZipDownloadProgress from "./ZipDownloadProgress";
 
 const DownloadResult = ({ result }) => {
+  const [zipProgress, setZipProgress] = useState({
+    isVisible: false,
+    progress: 0,
+    total: 0,
+    status: "idle", // 'idle', 'downloading', 'creating', 'success', 'error'
+    message: "",
+    estimatedSize: "",
+  });
   if (!result || !result.items || result.items.length === 0) {
     return null;
   }
@@ -24,13 +41,64 @@ const DownloadResult = ({ result }) => {
     document.body.removeChild(link);
   };
 
+  const handleZipDownload = async () => {
+    const estimatedSize = estimateZipSize(result.items);
+
+    setZipProgress({
+      isVisible: true,
+      progress: 0,
+      total: result.items.length,
+      status: "downloading",
+      message: "Starting download...",
+      estimatedSize,
+    });
+
+    try {
+      const zipResult = await downloadAsZip(
+        result.items,
+        `instagram_${result.batchResults ? "batch" : "post"}`,
+        (current, total, message) => {
+          setZipProgress((prev) => ({
+            ...prev,
+            progress: current,
+            total,
+            message,
+            status: current === total ? "creating" : "downloading",
+          }));
+        }
+      );
+
+      setZipProgress((prev) => ({
+        ...prev,
+        status: "success",
+        message: `Successfully downloaded ${zipResult.downloadedItems} of ${zipResult.totalItems} items as ${zipResult.zipName}`,
+      }));
+
+      // Auto-close after 3 seconds
+      setTimeout(() => {
+        setZipProgress((prev) => ({ ...prev, isVisible: false }));
+      }, 3000);
+    } catch (error) {
+      console.error("ZIP download failed:", error);
+      setZipProgress((prev) => ({
+        ...prev,
+        status: "error",
+        message: error.message || "Failed to create ZIP file",
+      }));
+    }
+  };
+
+  const closeZipProgress = () => {
+    setZipProgress((prev) => ({ ...prev, isVisible: false }));
+  };
+
   return (
     <div className="space-y-6 animate-bounce-in">
       <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-2xl backdrop-blur-sm">
         <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse neon-glow">
           <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
         </div>
-        <div>
+        <div className="flex-1">
           <p className="text-green-800 dark:text-green-200 font-bold text-lg">
             🎉 Download Ready!
           </p>
@@ -43,6 +111,25 @@ const DownloadResult = ({ result }) => {
             {result.items.length !== 1 ? "s" : ""} to download ✨
           </p>
         </div>
+
+        {/* ZIP Download Button for multiple items */}
+        {shouldOfferZipDownload(result.items) && (
+          <div className="flex flex-col items-end space-y-2">
+            <button
+              onClick={handleZipDownload}
+              className="btn-accent flex items-center space-x-2 group/zip"
+              title={`Download all ${
+                result.items.length
+              } items as ZIP (${estimateZipSize(result.items)})`}
+            >
+              <Archive className="w-5 h-5 group-hover/zip:animate-bounce" />
+              <span className="font-bold">📦 Download ZIP</span>
+            </button>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Est. size: {estimateZipSize(result.items)}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -247,6 +334,17 @@ const DownloadResult = ({ result }) => {
           </a>
         )}
       </div>
+
+      {/* ZIP Download Progress Modal */}
+      <ZipDownloadProgress
+        isVisible={zipProgress.isVisible}
+        onClose={closeZipProgress}
+        progress={zipProgress.progress}
+        total={zipProgress.total}
+        status={zipProgress.status}
+        message={zipProgress.message}
+        estimatedSize={zipProgress.estimatedSize}
+      />
     </div>
   );
 };
