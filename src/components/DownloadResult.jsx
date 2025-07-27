@@ -14,6 +14,7 @@ import {
   estimateZipSize,
 } from "../utils/zipDownload";
 import ZipDownloadProgress from "./ZipDownloadProgress";
+import MediaThumbnail from "./MediaThumbnail";
 
 const DownloadResult = ({ result }) => {
   const [zipProgress, setZipProgress] = useState({
@@ -153,101 +154,11 @@ const DownloadResult = ({ result }) => {
               </div>
 
               {/* Preview Thumbnail */}
-              <div
-                className="relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 cursor-pointer group/thumbnail"
+              <MediaThumbnail
+                item={item}
+                index={index}
                 onClick={() => window.open(item.media, "_blank")}
-                title="Click to open full size"
-              >
-                {item.isVideo ? (
-                  // For videos, try to use thumbnail or show video preview
-                  <div className="relative">
-                    {item.thumbnail ? (
-                      <img
-                        src={item.thumbnail}
-                        alt={`Video Preview ${index + 1}`}
-                        className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          // If thumbnail fails, hide image and show video icon
-                          e.target.style.display = "none";
-                          e.target.nextElementSibling.style.display = "flex";
-                        }}
-                      />
-                    ) : (
-                      // Fallback: try to use the video URL as preview (some browsers can show video thumbnails)
-                      <video
-                        src={item.media}
-                        className="w-full h-32 object-cover"
-                        muted
-                        preload="metadata"
-                        onError={(e) => {
-                          // If video preview fails, hide and show icon
-                          e.target.style.display = "none";
-                          e.target.nextElementSibling.style.display = "flex";
-                        }}
-                      />
-                    )}
-
-                    {/* Video overlay icon */}
-                    <div
-                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40"
-                      style={{ display: item.thumbnail ? "flex" : "none" }}
-                    >
-                      <div className="bg-white bg-opacity-90 rounded-full p-2">
-                        <Video className="w-6 h-6 text-gray-800" />
-                      </div>
-                    </div>
-
-                    {/* Hover overlay for videos */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/thumbnail:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                      <div className="opacity-0 group-hover/thumbnail:opacity-100 transition-opacity duration-300 bg-white bg-opacity-90 rounded-lg px-3 py-1">
-                        <span className="text-sm font-medium text-gray-800">
-                          Click to view
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Fallback icon if no preview available */}
-                    <div
-                      className="w-full h-32 flex items-center justify-center bg-gray-200 dark:bg-gray-700"
-                      style={{ display: "none" }}
-                    >
-                      <Video className="w-12 h-12 text-gray-400" />
-                    </div>
-                  </div>
-                ) : (
-                  // For images, use the media URL directly as thumbnail
-                  <div className="relative">
-                    <img
-                      src={item.thumbnail || item.media}
-                      alt={`Image Preview ${index + 1}`}
-                      className="w-full h-32 object-cover transition-transform duration-300 group-hover/thumbnail:scale-105"
-                      onError={(e) => {
-                        // If image fails, show fallback icon
-                        e.target.style.display = "none";
-                        e.target.nextElementSibling.nextElementSibling.style.display =
-                          "flex";
-                      }}
-                    />
-
-                    {/* Hover overlay for images */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover/thumbnail:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-                      <div className="opacity-0 group-hover/thumbnail:opacity-100 transition-opacity duration-300 bg-white bg-opacity-90 rounded-lg px-3 py-1">
-                        <span className="text-sm font-medium text-gray-800">
-                          Click to view
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Fallback icon if image fails to load */}
-                    <div
-                      className="w-full h-32 flex items-center justify-center bg-gray-200 dark:bg-gray-700"
-                      style={{ display: "none" }}
-                    >
-                      <Image className="w-12 h-12 text-gray-400" />
-                    </div>
-                  </div>
-                )}
-              </div>
+              />
 
               {/* Download Actions */}
               <div className="space-y-3">
