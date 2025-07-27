@@ -25,28 +25,33 @@ A modern, responsive Instagram downloader built with React and Tailwind CSS. Dow
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd dropinsta-react
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` and add your RapidAPI key:
+
    ```env
    VITE_RAPIDAPI_KEY=your_rapidapi_key_here
    VITE_RAPIDAPI_HOST=instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com
    ```
 
 4. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -98,31 +103,62 @@ src/
 ## 🎨 Features in Detail
 
 ### Single Download
+
 - Paste any Instagram URL
 - Real-time URL validation
 - Instant download with preview
 
 ### Batch Download
+
 - Add multiple URLs
 - Visual validation for each URL
 - Process all downloads sequentially
 
 ### Download History
+
 - Automatic history tracking
 - Expandable item details
 - Re-download from history
 - Clear history option
 
 ### Responsive Design
+
 - Mobile-first approach
 - Touch-friendly interactions
 - Optimized for all screen sizes
 
 ### Accessibility
+
 - Keyboard navigation
 - Screen reader support
 - Reduced motion support
 - High contrast support
+
+## 🚀 Deployment
+
+### Netlify Deployment
+
+1. **Build the project**
+
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy to Netlify**
+
+   - Connect your GitHub repository to Netlify
+   - Set build command: `npm run build`
+   - Set publish directory: `dist`
+
+3. **Configure Environment Variables in Netlify**
+
+   - Go to Site settings → Environment variables
+   - Add `VITE_RAPIDAPI_KEY` with your RapidAPI key
+   - Add `VITE_RAPIDAPI_HOST` with the API host URL
+
+4. **Deploy**
+   - Netlify will automatically build and deploy your site
+   - Your app will be available at your Netlify URL
 
 ## 🔧 Development
 
@@ -135,10 +171,10 @@ src/
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_RAPIDAPI_KEY` | Your RapidAPI key | Yes |
-| `VITE_RAPIDAPI_HOST` | API host URL | Yes |
+| Variable             | Description       | Required | Example                                                                |
+| -------------------- | ----------------- | -------- | ---------------------------------------------------------------------- |
+| `VITE_RAPIDAPI_KEY`  | Your RapidAPI key | Yes      | `abc123...`                                                            |
+| `VITE_RAPIDAPI_HOST` | API host URL      | Yes      | `instagram-downloader-scraper-reels-igtv-posts-stories.p.rapidapi.com` |
 
 ## 📄 License
 

@@ -44,7 +44,7 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
 
     if (!apiKey || apiKey === "your_rapidapi_key_here") {
       setError(
-        "API key not configured. Please check your environment variables."
+        "API key not configured. Please set up your RapidAPI key in the environment variables. Check the README for setup instructions."
       );
       setIsLoading(false);
       return;
@@ -107,7 +107,7 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
 
     if (!apiKey || apiKey === "your_rapidapi_key_here") {
       setError(
-        "API key not configured. Please check your environment variables."
+        "API key not configured. Please set up your RapidAPI key in the environment variables. Check the README for setup instructions."
       );
       setIsLoading(false);
       return;
