@@ -55,10 +55,13 @@ const DownloadResult = ({ result }) => {
     });
 
     try {
+      console.log("Starting ZIP download for items:", result.items);
+
       const zipResult = await downloadAsZip(
         result.items,
         `instagram_${result.batchResults ? "batch" : "post"}`,
         (current, total, message) => {
+          console.log(`ZIP Progress: ${current}/${total} - ${message}`);
           setZipProgress((prev) => ({
             ...prev,
             progress: current,
@@ -69,28 +72,56 @@ const DownloadResult = ({ result }) => {
         }
       );
 
+      console.log("ZIP download completed:", zipResult);
+
       setZipProgress((prev) => ({
         ...prev,
         status: "success",
         message: `Successfully downloaded ${zipResult.downloadedItems} of ${zipResult.totalItems} items as ${zipResult.zipName}`,
       }));
 
-      // Auto-close after 3 seconds
+      // Auto-close after 5 seconds for success
       setTimeout(() => {
         setZipProgress((prev) => ({ ...prev, isVisible: false }));
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error("ZIP download failed:", error);
+
+      // Provide more detailed error information
+      let errorMessage = "Failed to create ZIP file";
+      if (error.message.includes("Failed to download any media files")) {
+        errorMessage =
+          "Could not download any media files. This might be due to CORS restrictions or network issues.";
+      } else if (error.message.includes("fetch")) {
+        errorMessage =
+          "Network error while downloading media files. Please try again.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       setZipProgress((prev) => ({
         ...prev,
         status: "error",
-        message: error.message || "Failed to create ZIP file",
+        message: errorMessage,
       }));
     }
   };
 
   const closeZipProgress = () => {
     setZipProgress((prev) => ({ ...prev, isVisible: false }));
+  };
+
+  // Alternative download method for when ZIP fails
+  const handleBulkIndividualDownload = () => {
+    result.items.forEach((item, index) => {
+      setTimeout(() => {
+        handleDownload(
+          item.media,
+          `instagram_${item.isVideo ? "video" : "image"}_${index + 1}`,
+          item.isVideo
+        );
+      }, index * 1000); // 1 second delay between downloads
+    });
   };
 
   return (
@@ -113,22 +144,39 @@ const DownloadResult = ({ result }) => {
           </p>
         </div>
 
-        {/* ZIP Download Button for multiple items */}
+        {/* Bulk Download Options for multiple items */}
         {shouldOfferZipDownload(result.items) && (
           <div className="flex flex-col items-end space-y-2">
-            <button
-              onClick={handleZipDownload}
-              className="btn-accent flex items-center space-x-2 group/zip"
-              title={`Download all ${
-                result.items.length
-              } items as ZIP (${estimateZipSize(result.items)})`}
-            >
-              <Archive className="w-5 h-5 group-hover/zip:animate-bounce" />
-              <span className="font-bold">📦 Download ZIP</span>
-            </button>
-            <p className="text-xs text-green-600 dark:text-green-400">
-              Est. size: {estimateZipSize(result.items)}
-            </p>
+            <div className="flex flex-col space-y-2">
+              <button
+                onClick={handleZipDownload}
+                className="btn-accent flex items-center space-x-2 group/zip"
+                title={`Download all ${
+                  result.items.length
+                } items as ZIP (${estimateZipSize(result.items)})`}
+              >
+                <Archive className="w-5 h-5 group-hover/zip:animate-bounce" />
+                <span className="font-bold">📦 Download ZIP</span>
+              </button>
+
+              <button
+                onClick={handleBulkIndividualDownload}
+                className="btn-secondary text-xs flex items-center space-x-2 group/bulk"
+                title="Download all items individually (fallback if ZIP fails)"
+              >
+                <Download className="w-4 h-4 group-hover/bulk:animate-bounce" />
+                <span className="font-medium">⚡ Download All</span>
+              </button>
+            </div>
+
+            <div className="text-right">
+              <p className="text-xs text-green-600 dark:text-green-400">
+                ZIP: {estimateZipSize(result.items)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {result.items.length} items
+              </p>
+            </div>
           </div>
         )}
       </div>
