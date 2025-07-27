@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { fetchInstagramMedia, isInstagramMediaUrl } from "./instagramFetcher";
 
 /**
  * Downloads multiple media files as a ZIP archive
@@ -37,69 +38,72 @@ export const downloadAsZip = async (
 
   // Helper function to fetch file as blob
   const fetchAsBlob = async (url) => {
+    console.log(`Attempting to fetch: ${url}`);
+
     try {
-      // Try different fetch strategies for better compatibility
+      // Use specialized Instagram fetcher for Instagram URLs
+      if (isInstagramMediaUrl(url)) {
+        console.log("Using specialized Instagram fetcher...");
+        const blob = await fetchInstagramMedia(url);
+        if (blob && blob.size > 0) {
+          console.log(`Instagram fetcher successful: ${blob.size} bytes`);
+          return blob;
+        }
+        console.log("Instagram fetcher failed, trying fallback methods...");
+      }
+
+      // Fallback to general fetch strategies for non-Instagram URLs or if Instagram fetcher fails
       const fetchStrategies = [
-        // Strategy 1: No-cors mode (most permissive)
-        () =>
-          fetch(url, {
-            mode: "no-cors",
-            headers: {
-              Accept: "*/*",
-            },
-          }),
-        // Strategy 2: CORS mode with credentials
-        () =>
-          fetch(url, {
+        // Strategy 1: CORS mode with proper headers
+        async () => {
+          const response = await fetch(url, {
             mode: "cors",
             credentials: "omit",
             headers: {
               Accept: "*/*",
               "User-Agent":
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              Referer: "https://www.instagram.com/",
             },
-          }),
-        // Strategy 3: Simple fetch
-        () => fetch(url),
+          });
+          return response.ok ? await response.blob() : null;
+        },
+
+        // Strategy 2: Simple fetch
+        async () => {
+          const response = await fetch(url);
+          return response.ok ? await response.blob() : null;
+        },
+
+        // Strategy 3: Proxy approach
+        async () => {
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+            url
+          )}`;
+          const response = await fetch(proxyUrl);
+          return response.ok ? await response.blob() : null;
+        },
       ];
 
-      let lastError;
-
-      for (const strategy of fetchStrategies) {
+      for (let i = 0; i < fetchStrategies.length; i++) {
         try {
-          const response = await strategy();
-
-          // For no-cors mode, we can't check response.ok
-          if (response.type === "opaque" || response.ok) {
-            const blob = await response.blob();
-            if (blob && blob.size > 0) {
-              return blob;
-            }
+          console.log(`Trying fallback strategy ${i + 1}...`);
+          const blob = await fetchStrategies[i]();
+          if (blob && blob.size > 0) {
+            console.log(
+              `Fallback strategy ${i + 1} successful: ${blob.size} bytes`
+            );
+            return blob;
           }
         } catch (error) {
-          lastError = error;
-          continue;
+          console.log(`Fallback strategy ${i + 1} failed: ${error.message}`);
         }
       }
 
-      throw lastError || new Error("All fetch strategies failed");
+      console.warn(`All fetch strategies failed for: ${url}`);
+      return null;
     } catch (error) {
-      console.warn(`Failed to fetch ${url}:`, error);
-
-      // Try using a proxy approach as last resort
-      try {
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-          url
-        )}`;
-        const response = await fetch(proxyUrl);
-        if (response.ok) {
-          return await response.blob();
-        }
-      } catch (proxyError) {
-        console.warn(`Proxy fetch also failed for ${url}:`, proxyError);
-      }
-
-      // Return null for failed downloads
+      console.error(`Unexpected error fetching ${url}:`, error);
       return null;
     }
   };
@@ -167,16 +171,28 @@ export const downloadAsZip = async (
     }
   }
 
+  console.log(
+    `ZIP creation summary: ${completedItems}/${totalItems} items successfully downloaded`
+  );
+
   if (completedItems === 0) {
-    throw new Error("Failed to download any media files");
+    throw new Error(
+      `Failed to download any media files. All ${totalItems} downloads failed due to CORS restrictions or network issues.`
+    );
   }
 
   // Generate and download ZIP
   if (onProgress) {
-    onProgress(totalItems, totalItems, "Creating ZIP file...");
+    onProgress(
+      totalItems,
+      totalItems,
+      `Creating ZIP file with ${completedItems} items...`
+    );
   }
 
   try {
+    console.log("Starting ZIP generation...");
+
     const zipBlob = await zip.generateAsync({
       type: "blob",
       compression: "DEFLATE",
@@ -185,9 +201,13 @@ export const downloadAsZip = async (
       },
     });
 
+    console.log(`ZIP generated successfully: ${zipBlob.size} bytes`);
+
     const finalZipName = `${zipName}_${new Date()
       .toISOString()
       .slice(0, 10)}.zip`;
+
+    console.log(`Downloading ZIP as: ${finalZipName}`);
     saveAs(zipBlob, finalZipName);
 
     return {
@@ -195,9 +215,13 @@ export const downloadAsZip = async (
       downloadedItems: completedItems,
       totalItems: totalItems,
       zipName: finalZipName,
+      skippedItems: totalItems - completedItems,
     };
   } catch (error) {
-    throw new Error(`Failed to create ZIP file: ${error.message}`);
+    console.error("ZIP generation failed:", error);
+    throw new Error(
+      `Failed to create ZIP file: ${error.message}. Successfully downloaded ${completedItems}/${totalItems} items but couldn't create the archive.`
+    );
   }
 };
 
