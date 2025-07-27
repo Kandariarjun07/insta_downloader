@@ -2,26 +2,56 @@
 export const getApiConfig = () => {
   const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
   const apiHost = import.meta.env.VITE_RAPIDAPI_HOST;
-  
-  if (!apiKey || apiKey === 'your_rapidapi_key_here') {
-    throw new Error('API key not configured. Please set up your RapidAPI key in the environment variables. Check the README for setup instructions.');
+
+  // Better error handling for missing environment variables
+  if (
+    !apiKey ||
+    apiKey === "undefined" ||
+    apiKey === "your_rapidapi_key_here" ||
+    apiKey.trim() === ""
+  ) {
+    throw new Error(
+      "🔑 API key not configured properly. Please check your Netlify environment variables:\n" +
+        "1. Go to your Netlify dashboard\n" +
+        "2. Navigate to Site settings > Environment variables\n" +
+        "3. Add VITE_RAPIDAPI_KEY with your RapidAPI key\n" +
+        "4. Redeploy your site"
+    );
   }
-  
-  if (!apiHost) {
-    throw new Error('API host not configured. Please check your environment variables.');
+
+  if (!apiHost || apiHost === "undefined" || apiHost.trim() === "") {
+    throw new Error(
+      "🌐 API host not configured properly. Please check your Netlify environment variables:\n" +
+        "1. Add VITE_RAPIDAPI_HOST with your RapidAPI host\n" +
+        "2. Redeploy your site"
+    );
   }
-  
+
   return {
-    apiKey,
-    apiHost,
+    apiKey: apiKey.trim(),
+    apiHost: apiHost.trim(),
     headers: {
-      'x-rapidapi-key': apiKey,
-      'x-rapidapi-host': apiHost
-    }
+      "x-rapidapi-key": apiKey.trim(),
+      "x-rapidapi-host": apiHost.trim(),
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
   };
 };
 
 export const buildApiUrl = (url) => {
-  const { apiHost } = getApiConfig();
-  return `https://${apiHost}/scraper?url=${encodeURIComponent(url)}`;
+  try {
+    const { apiHost } = getApiConfig();
+    const cleanUrl = url.trim();
+
+    // Validate URL format
+    if (!cleanUrl.startsWith("http")) {
+      throw new Error("Invalid URL format");
+    }
+
+    return `https://${apiHost}/scraper?url=${encodeURIComponent(cleanUrl)}`;
+  } catch (error) {
+    console.error("Error building API URL:", error);
+    throw error;
+  }
 };

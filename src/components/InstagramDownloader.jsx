@@ -49,22 +49,99 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
         headers,
       });
 
+      if (!response.ok) {
+        // Handle different HTTP status codes
+        if (response.status === 401) {
+          throw new Error(
+            "🔑 API authentication failed. Please check your RapidAPI key configuration in Netlify environment variables."
+          );
+        } else if (response.status === 403) {
+          throw new Error(
+            "🚫 API access forbidden. Your RapidAPI subscription might have expired or you've exceeded the rate limit."
+          );
+        } else if (response.status === 404) {
+          throw new Error(
+            "🔍 Content not found. The Instagram post might be private, deleted, or the URL is incorrect."
+          );
+        } else if (response.status === 429) {
+          throw new Error(
+            "⏰ Rate limit exceeded. Please wait a moment before trying again."
+          );
+        } else if (response.status >= 500) {
+          throw new Error(
+            "🛠️ Server error. The API service is temporarily unavailable. Please try again later."
+          );
+        } else {
+          throw new Error(
+            `❌ Request failed with status ${response.status}. Please try again.`
+          );
+        }
+      }
+
       const data = await response.json();
 
-      if (data && data.data && data.data.length > 0) {
+      // Better validation of response data
+      if (!data || typeof data !== "object") {
+        throw new Error(
+          "🔧 Invalid response format from API. Please try again or contact support."
+        );
+      }
+
+      // Check for API-specific error messages
+      if (data.error) {
+        throw new Error(`🚨 API Error: ${data.error}`);
+      }
+
+      if (
+        data &&
+        data.data &&
+        Array.isArray(data.data) &&
+        data.data.length > 0
+      ) {
+        // Validate that we have actual media items
+        const validItems = data.data.filter(
+          (item) => item && item.media && typeof item.media === "string"
+        );
+
+        if (validItems.length === 0) {
+          throw new Error(
+            "📱 No downloadable media found in this post. The content might be text-only or contain unsupported media types."
+          );
+        }
+
         const downloadData = {
           url: targetUrl,
-          items: data.data,
+          items: validItems,
         };
+
+        console.log(
+          `Successfully found ${validItems.length} downloadable items`
+        );
         setResult(downloadData);
         onDownloadComplete(downloadData);
       } else {
-        setError(
-          "Could not fetch download links. Please check the URL and try again."
+        throw new Error(
+          "📱 No downloadable content found. This could happen if:\n\n" +
+            "• The post is private or restricted\n" +
+            "• The URL is incorrect or expired\n" +
+            "• The content doesn't contain downloadable media\n" +
+            "• Instagram has changed their content structure\n\n" +
+            "💡 Try refreshing the Instagram page and copying the URL again."
         );
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Download error:", err);
+
+      // Handle network and configuration errors
+      if (err.name === "TypeError" && err.message.includes("fetch")) {
+        setError(
+          "🌐 Network error. Please check your internet connection and try again."
+        );
+      } else if (err.message.includes("API key not configured")) {
+        setError(err.message); // This already has good formatting from config.js
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,10 +169,16 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
       const { headers } = getApiConfig();
       const allResults = [];
       let hasErrors = false;
+      const failedUrls = [];
 
       // Process URLs one by one to avoid rate limiting
-      for (const targetUrl of validUrls) {
+      for (let i = 0; i < validUrls.length; i++) {
+        const targetUrl = validUrls[i];
         try {
+          console.log(
+            `Processing batch URL ${i + 1}/${validUrls.length}: ${targetUrl}`
+          );
+
           const apiUrl = buildApiUrl(targetUrl.trim());
 
           const response = await fetch(apiUrl, {
@@ -103,49 +186,115 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
             headers,
           });
 
+          if (!response.ok) {
+            console.error(`URL ${i + 1} failed with status ${response.status}`);
+            hasErrors = true;
+            failedUrls.push({
+              url: targetUrl,
+              error: `HTTP ${response.status}`,
+            });
+            continue;
+          }
+
           const data = await response.json();
 
-          if (data && data.data && data.data.length > 0) {
-            const downloadData = {
-              url: targetUrl.trim(),
-              items: data.data,
-            };
-            allResults.push(downloadData);
-            onDownloadComplete(downloadData);
+          if (
+            data &&
+            data.data &&
+            Array.isArray(data.data) &&
+            data.data.length > 0
+          ) {
+            const validItems = data.data.filter(
+              (item) => item && item.media && typeof item.media === "string"
+            );
+
+            if (validItems.length > 0) {
+              const downloadData = {
+                url: targetUrl.trim(),
+                items: validItems,
+              };
+              allResults.push(downloadData);
+              onDownloadComplete(downloadData);
+              console.log(
+                `Successfully processed URL ${i + 1}: ${
+                  validItems.length
+                } items`
+              );
+            } else {
+              hasErrors = true;
+              failedUrls.push({
+                url: targetUrl,
+                error: "No valid media items found",
+              });
+            }
           } else {
             hasErrors = true;
+            failedUrls.push({ url: targetUrl, error: "No data returned" });
             console.error(`Failed to fetch data for URL: ${targetUrl}`);
           }
         } catch (err) {
           hasErrors = true;
+          failedUrls.push({ url: targetUrl, error: err.message });
           console.error(`Error processing URL ${targetUrl}:`, err.message);
         }
 
-        // Add a small delay between requests
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Add a progressive delay between requests (longer delays for more URLs)
+        if (i < validUrls.length - 1) {
+          const delay = Math.min(1000 + i * 200, 3000); // 1-3 second progressive delay
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
       }
 
       if (allResults.length > 0) {
         // Combine all results into a single result object
+        const totalItems = allResults.reduce(
+          (sum, result) => sum + result.items.length,
+          0
+        );
+
         const combinedResult = {
-          url: `Batch download (${allResults.length} URLs)`,
+          url: `Batch download (${allResults.length} URLs, ${totalItems} items)`,
           items: allResults.flatMap((result) => result.items),
           batchResults: allResults, // Keep individual results for reference
         };
+
+        console.log(
+          `Batch download completed: ${allResults.length} successful URLs, ${totalItems} total items`
+        );
         setResult(combinedResult);
       }
 
+      // Provide detailed error reporting
       if (hasErrors && allResults.length === 0) {
+        const errorDetails = failedUrls
+          .map((failed, index) => `${index + 1}. URL failed: ${failed.error}`)
+          .join("\n");
+
         setError(
-          "Could not fetch download links for any URLs. Please check the URLs and try again."
+          `❌ Could not process any URLs successfully.\n\n` +
+            `Errors encountered:\n${errorDetails}\n\n` +
+            `💡 Common causes:\n` +
+            `• URLs are private or restricted\n` +
+            `• Rate limiting from too many requests\n` +
+            `• Network connectivity issues\n` +
+            `• Invalid or expired URLs`
         );
       } else if (hasErrors) {
+        const successCount = allResults.length;
+        const failCount = failedUrls.length;
+
         setError(
-          `Successfully processed ${allResults.length} out of ${validUrls.length} URLs. Some URLs failed to download.`
+          `⚠️ Partial Success: ${successCount} of ${validUrls.length} URLs processed successfully.\n\n` +
+            `${failCount} URLs failed:\n` +
+            failedUrls
+              .map((failed, index) => `${index + 1}. ${failed.error}`)
+              .join("\n") +
+            `\n\n💡 You can still download the successful items below.`
         );
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Batch download error:", err);
+      setError(`🚨 Batch download failed: ${err.message}`);
     } finally {
       setIsLoading(false);
     }

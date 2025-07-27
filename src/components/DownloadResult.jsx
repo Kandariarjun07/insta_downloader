@@ -7,9 +7,11 @@ import {
   CheckCircle,
   Package,
   Archive,
+  AlertTriangle,
 } from "lucide-react";
 import {
   downloadAsZip,
+  downloadAllIndividually,
   shouldOfferZipDownload,
   estimateZipSize,
 } from "../utils/zipDownload";
@@ -25,21 +27,42 @@ const DownloadResult = ({ result }) => {
     message: "",
     estimatedSize: "",
   });
+
   if (!result || !result.items || result.items.length === 0) {
-    return null;
+    return (
+      <div className="text-center p-8 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-700 rounded-2xl">
+        <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+        <p className="text-yellow-800 dark:text-yellow-200 font-semibold">
+          No media items found to download
+        </p>
+        <p className="text-yellow-600 dark:text-yellow-300 text-sm mt-2">
+          The URL might be invalid or the content is not accessible
+        </p>
+      </div>
+    );
   }
 
   const handleDownload = (mediaUrl, filename, isVideo) => {
-    // Create a temporary anchor element to trigger download
-    const link = document.createElement("a");
-    link.href = mediaUrl;
-    link.download =
-      filename || `instagram_${isVideo ? "video" : "image"}_${Date.now()}`;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement("a");
+      link.href = mediaUrl;
+      link.download =
+        filename || `instagram_${isVideo ? "video" : "image"}_${Date.now()}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      // Add referrer policy for better compatibility
+      link.setAttribute("referrerpolicy", "no-referrer");
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Fallback: open in new tab
+      window.open(mediaUrl, "_blank", "noopener,noreferrer");
+    }
   };
 
   const handleZipDownload = async () => {
@@ -50,7 +73,7 @@ const DownloadResult = ({ result }) => {
       progress: 0,
       total: result.items.length,
       status: "downloading",
-      message: "Starting download...",
+      message: "Initializing ZIP download...",
       estimatedSize,
     });
 
@@ -77,7 +100,9 @@ const DownloadResult = ({ result }) => {
       setZipProgress((prev) => ({
         ...prev,
         status: "success",
-        message: `Successfully downloaded ${zipResult.downloadedItems} of ${zipResult.totalItems} items as ${zipResult.zipName}`,
+        message:
+          zipResult.message ||
+          `Successfully created ${zipResult.zipName} with ${zipResult.downloadedItems} items`,
       }));
 
       // Auto-close after 5 seconds for success
@@ -89,13 +114,18 @@ const DownloadResult = ({ result }) => {
 
       // Provide more detailed error information
       let errorMessage = "Failed to create ZIP file";
+
       if (error.message.includes("Failed to download any media files")) {
         errorMessage =
-          "Could not download any media files. This might be due to CORS restrictions or network issues.";
-      } else if (error.message.includes("fetch")) {
-        errorMessage =
-          "Network error while downloading media files. Please try again.";
-      } else if (error.message) {
+          "❌ Could not download any media files.\n\n" +
+          "This usually happens due to:\n" +
+          "• CORS restrictions from Instagram servers\n" +
+          "• Network connectivity issues\n" +
+          "• Rate limiting\n\n" +
+          "💡 Try the 'Download All' button instead!";
+      } else if (error.message.includes("API key not configured")) {
+        errorMessage = "⚙️ Configuration Error\n\n" + error.message;
+      } else {
         errorMessage = error.message;
       }
 
@@ -107,25 +137,56 @@ const DownloadResult = ({ result }) => {
     }
   };
 
+  const handleBulkIndividualDownload = async () => {
+    try {
+      setZipProgress({
+        isVisible: true,
+        progress: 0,
+        total: result.items.length,
+        status: "downloading",
+        message: "Starting individual downloads...",
+        estimatedSize: "",
+      });
+
+      const downloadResult = await downloadAllIndividually(
+        result.items,
+        (current, total, message) => {
+          setZipProgress((prev) => ({
+            ...prev,
+            progress: current,
+            total,
+            message,
+          }));
+        }
+      );
+
+      setZipProgress((prev) => ({
+        ...prev,
+        status: "success",
+        message: `✅ ${downloadResult.message}\n\nFiles should appear in your browser's download folder.`,
+      }));
+
+      // Auto-close after 7 seconds for individual downloads
+      setTimeout(() => {
+        setZipProgress((prev) => ({ ...prev, isVisible: false }));
+      }, 7000);
+    } catch (error) {
+      console.error("Individual download failed:", error);
+      setZipProgress((prev) => ({
+        ...prev,
+        status: "error",
+        message: `❌ Individual download failed: ${error.message}`,
+      }));
+    }
+  };
+
   const closeZipProgress = () => {
     setZipProgress((prev) => ({ ...prev, isVisible: false }));
   };
 
-  // Alternative download method for when ZIP fails
-  const handleBulkIndividualDownload = () => {
-    result.items.forEach((item, index) => {
-      setTimeout(() => {
-        handleDownload(
-          item.media,
-          `instagram_${item.isVideo ? "video" : "image"}_${index + 1}`,
-          item.isVideo
-        );
-      }, index * 1000); // 1 second delay between downloads
-    });
-  };
-
   return (
     <div className="space-y-6 animate-bounce-in">
+      {/* Success Header */}
       <div className="flex items-center space-x-4 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-2xl backdrop-blur-sm">
         <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-pulse neon-glow">
           <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
