@@ -5,6 +5,8 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--production=false"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_RAPIDAPI_KEY,VITE_RAPIDAPI_HOST"
+  SECRETS_SCAN_OMIT_PATHS = "dist/**/*"
 
 [[redirects]]
   from = "/*"

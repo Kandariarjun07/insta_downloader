@@ -9,6 +9,7 @@ import {
 import UrlInput from "./UrlInput";
 import DownloadResult from "./DownloadResult";
 import BatchDownloader from "./BatchDownloader";
+import { getApiConfig, buildApiUrl } from "../utils/config";
 
 const InstagramDownloader = ({ onDownloadComplete }) => {
   const [url, setUrl] = useState("");
@@ -39,28 +40,13 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
     setError("");
     setResult(null);
 
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    const apiHost = import.meta.env.VITE_RAPIDAPI_HOST;
-
-    if (!apiKey || apiKey === "your_rapidapi_key_here") {
-      setError(
-        "API key not configured. Please set up your RapidAPI key in the environment variables. Check the README for setup instructions."
-      );
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const apiUrl = `https://${apiHost}/scraper?url=${encodeURIComponent(
-        targetUrl
-      )}`;
+      const { headers } = getApiConfig();
+      const apiUrl = buildApiUrl(targetUrl);
 
       const response = await fetch(apiUrl, {
         method: "GET",
-        headers: {
-          "x-rapidapi-key": apiKey,
-          "x-rapidapi-host": apiHost,
-        },
+        headers,
       });
 
       const data = await response.json();
@@ -78,7 +64,7 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
         );
       }
     } catch (err) {
-      setError(`Error: ${err.message}`);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -102,78 +88,67 @@ const InstagramDownloader = ({ onDownloadComplete }) => {
     setError("");
     setResult(null);
 
-    const apiKey = import.meta.env.VITE_RAPIDAPI_KEY;
-    const apiHost = import.meta.env.VITE_RAPIDAPI_HOST;
+    try {
+      const { headers } = getApiConfig();
+      const allResults = [];
+      let hasErrors = false;
 
-    if (!apiKey || apiKey === "your_rapidapi_key_here") {
-      setError(
-        "API key not configured. Please set up your RapidAPI key in the environment variables. Check the README for setup instructions."
-      );
-      setIsLoading(false);
-      return;
-    }
+      // Process URLs one by one to avoid rate limiting
+      for (const targetUrl of validUrls) {
+        try {
+          const apiUrl = buildApiUrl(targetUrl.trim());
 
-    const allResults = [];
-    let hasErrors = false;
+          const response = await fetch(apiUrl, {
+            method: "GET",
+            headers,
+          });
 
-    // Process URLs one by one to avoid rate limiting
-    for (const targetUrl of validUrls) {
-      try {
-        const apiUrl = `https://${apiHost}/scraper?url=${encodeURIComponent(
-          targetUrl.trim()
-        )}`;
+          const data = await response.json();
 
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "x-rapidapi-key": apiKey,
-            "x-rapidapi-host": apiHost,
-          },
-        });
-
-        const data = await response.json();
-
-        if (data && data.data && data.data.length > 0) {
-          const downloadData = {
-            url: targetUrl.trim(),
-            items: data.data,
-          };
-          allResults.push(downloadData);
-          onDownloadComplete(downloadData);
-        } else {
+          if (data && data.data && data.data.length > 0) {
+            const downloadData = {
+              url: targetUrl.trim(),
+              items: data.data,
+            };
+            allResults.push(downloadData);
+            onDownloadComplete(downloadData);
+          } else {
+            hasErrors = true;
+            console.error(`Failed to fetch data for URL: ${targetUrl}`);
+          }
+        } catch (err) {
           hasErrors = true;
-          console.error(`Failed to fetch data for URL: ${targetUrl}`);
+          console.error(`Error processing URL ${targetUrl}:`, err.message);
         }
-      } catch (err) {
-        hasErrors = true;
-        console.error(`Error processing URL ${targetUrl}:`, err.message);
+
+        // Add a small delay between requests
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Add a small delay between requests
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+      if (allResults.length > 0) {
+        // Combine all results into a single result object
+        const combinedResult = {
+          url: `Batch download (${allResults.length} URLs)`,
+          items: allResults.flatMap((result) => result.items),
+          batchResults: allResults, // Keep individual results for reference
+        };
+        setResult(combinedResult);
+      }
 
-    if (allResults.length > 0) {
-      // Combine all results into a single result object
-      const combinedResult = {
-        url: `Batch download (${allResults.length} URLs)`,
-        items: allResults.flatMap((result) => result.items),
-        batchResults: allResults, // Keep individual results for reference
-      };
-      setResult(combinedResult);
+      if (hasErrors && allResults.length === 0) {
+        setError(
+          "Could not fetch download links for any URLs. Please check the URLs and try again."
+        );
+      } else if (hasErrors) {
+        setError(
+          `Successfully processed ${allResults.length} out of ${validUrls.length} URLs. Some URLs failed to download.`
+        );
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    if (hasErrors && allResults.length === 0) {
-      setError(
-        "Could not fetch download links for any URLs. Please check the URLs and try again."
-      );
-    } else if (hasErrors) {
-      setError(
-        `Successfully processed ${allResults.length} out of ${validUrls.length} URLs. Some URLs failed to download.`
-      );
-    }
-
-    setIsLoading(false);
   };
 
   return (
